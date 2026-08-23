@@ -1,0 +1,723 @@
+{
+  "name": "Employee Assistant - Router (Parent Graph)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d142b4f5-6af6-4239-8f4c-1e6f81aa6ee3",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1808,
+        2000
+      ],
+      "webhookId": "3aa124d9-e182-42dd-a542-74bea59784e6"
+    },
+    {
+      "parameters": {
+        "options": {
+          "groupMessages": true
+        }
+      },
+      "id": "a65cf6fe-8302-46ac-a57e-3515edbb41f7",
+      "name": "Load Chat History",
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        2160,
+        2016
+      ]
+    },
+    {
+      "parameters": {
+        "inputText": "={{ 'Conversation History:\\n' + JSON.stringify($json.messages.slice(-4)) + '\\n\\nLATEST MESSAGE:\\n' + $('When chat message received').first().json.chatInput }}",
+        "categories": {
+          "categories": [
+            {
+              "category": "time_off",
+              "description": "Requests about vacation, leave, PTO, sick days, or time-off balances."
+            },
+            {
+              "category": "expense_reimbursement",
+              "description": "Requests about expensing purchases, reimbursement claims, or expense policy questions."
+            }
+          ]
+        },
+        "options": {
+          "fallback": "other",
+          "systemPromptTemplate": "You are an intent classifier for an employee assistant in an ongoing chat.\n\nThe text you receive is the recent conversation followed by the newest employee message, marked LATEST MESSAGE. Classify ONLY the latest message, but use the earlier turns as context.\n\nCritical: a short follow-up reply - 'tomorrow', 'next Friday', '300', 'meals', 'yes' - is almost never off-topic. It answers whatever the assistant just asked, so it carries the intent of the conversation it belongs to. Classify it that way.\n\nChoose the fallback category only when the latest message genuinely starts a new, unrelated topic.\n\nCategories: {categories}. Use the provided formatting instructions below. Don't explain, and only output the json."
+        }
+      },
+      "id": "5019d899-f76a-4138-8923-78d25d0d73cf",
+      "name": "Classify Intent",
+      "type": "@n8n/n8n-nodes-langchain.textClassifier",
+      "typeVersion": 1,
+      "position": [
+        2608,
+        2000
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "46c1e115-59e4-428a-8965-0fea607551ef",
+      "name": "Classifier Model (gpt-4o)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2688,
+        2256
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "FPWeiw3g01zK4icZ",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "02ef0649-dff9-4503-b2f9-513089bf2f45",
+      "name": "Agent Model (gpt-4o)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3008,
+        1680
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "FPWeiw3g01zK4icZ",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 20
+      },
+      "id": "ddb592ca-2e2d-496c-81a1-81b45ad2ab76",
+      "name": "Shared Memory (messages)",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        2560,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('When chat message received').first().json.chatInput }}",
+        "options": {
+          "systemMessage": "=You are a helpful and accurate employee Time-Off Assistant.\nYou are given a user's request, and you need to reason about it and call the necessary tools to handle it.\n\nFollow these rules:\n1. Work out the concrete start_date and end_date (YYYY-MM-DD) from the user's message before calling any tool. Today's and tomorrow's dates are given below with their weekday names - use them, never your own idea of the date. \"tomorrow\" = the tomorrow's date below. \"next Friday\" = the Friday of next week, not this week's Friday. A single day off means start_date and end_date are the same date.\n1b. State the resolved dates back in your reply (\"Booking Mon 2026-08-24 to Fri 2026-08-28\") so a misread is visible.\n2. If the dates are missing or ambiguous, DO NOT guess - reply with a short question asking the user for the missing dates and stop. The user will answer in the next chat message and you will remember this conversation.\n3. Check the user's balance with get_time_off_balance before submitting when the request is longer than one day.\n4. Once you have start_date and end_date, call process_time_off immediately - do NOT ask for confirmation.\n5. After the tool returns, tell the user plainly whether the request succeeded and what their remaining balance is.\n6. Only handle time-off / leave / PTO topics.\n\ntoday's date    : {{ $now.format('cccc') }}, {{ $now.format('yyyy-MM-dd') }}\ntomorrow's date : {{ $now.plus(1, 'day').format('cccc') }}, {{ $now.plus(1, 'day').format('yyyy-MM-dd') }}\n\nuser_id : 1",
+          "maxIterations": 10
+        }
+      },
+      "id": "dd800a71-5e40-40a0-9f28-91b191aff168",
+      "name": "Time-Off Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        3088,
+        1392
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Get the time off balance for a user. Returns the number of leave days the user has left.",
+        "jsCode": "// Port of get_time_off_balance() from the LangGraph notebook.\n// Mock HRIS lookup - in production this would be an HTTP Request tool.\nconst userId = String(query.user_id ?? '1');\n\nconst BALANCES = { '1': 10 };\nconst balance = BALANCES[userId] ?? 10;\n\nreturn JSON.stringify({ user_id: userId, balance_days: balance });\n",
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"user_id\": {\n      \"type\": \"string\",\n      \"description\": \"A unique string representing the user id\"\n    }\n  },\n  \"required\": [\n    \"user_id\"\n  ]\n}"
+      },
+      "id": "cea15222-008d-48d9-8ac6-09ec849d4020",
+      "name": "get_time_off_balance",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.2,
+      "position": [
+        3216,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Process a time-off request for a user. Returns a status ('success' or 'error') and a human readable message with the updated balance.",
+        "jsCode": "// Port of process_time_off() from the LangGraph notebook.\nconst userId = String(query.user_id ?? '1');\nconst BALANCES = { '1': 10 };\nconst balance = BALANCES[userId] ?? 10;\n\nconst start = new Date(String(query.start_date) + 'T00:00:00Z');\nconst end = new Date(String(query.end_date) + 'T00:00:00Z');\n\nif (isNaN(start.getTime()) || isNaN(end.getTime())) {\n  return JSON.stringify({\n    status: 'error',\n    message: 'start_date and end_date must both be valid dates in YYYY-MM-DD format.',\n  });\n}\n\nconst MS_PER_DAY = 24 * 60 * 60 * 1000;\n// Inclusive of both the start and the end day, same as the notebook (+ 1).\nconst daysRequested = Math.round((end.getTime() - start.getTime()) / MS_PER_DAY) + 1;\n\nif (daysRequested <= 0) {\n  return JSON.stringify({\n    status: 'error',\n    message: 'end_date must be on or after start_date.',\n  });\n}\n\nif (daysRequested > balance) {\n  return JSON.stringify({\n    status: 'error',\n    message: 'Time off request failed. You only have ' + balance +\n      ' days of remaining leave but requested ' + daysRequested + ' days.',\n  });\n}\n\nconst remaining = balance - daysRequested;\n\nreturn JSON.stringify({\n  status: 'success',\n  message: 'Time off request processed successfully for ' + daysRequested +\n    ' day(s). Your remaining time off balance is ' + remaining + '.',\n});\n",
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"user_id\": {\n      \"type\": \"string\",\n      \"description\": \"A unique string representing the user id\"\n    },\n    \"start_date\": {\n      \"type\": \"string\",\n      \"description\": \"Start date of the time-off request, YYYY-MM-DD\"\n    },\n    \"end_date\": {\n      \"type\": \"string\",\n      \"description\": \"End date of the time-off request, YYYY-MM-DD\"\n    }\n  },\n  \"required\": [\n    \"user_id\",\n    \"start_date\",\n    \"end_date\"\n  ]\n}"
+      },
+      "id": "81d0195c-8cd7-46da-a0f0-f8bcdf02d2ad",
+      "name": "process_time_off",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.2,
+      "position": [
+        3344,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "search_expense_policy",
+        "toolDescription": "Search the company expense policy documents for rules relevant to a query. Input a natural language question about expense policy (e.g. 'client dinner limit') and get back the most relevant policy text.",
+        "pineconeIndex": {
+          "__rl": true,
+          "mode": "list",
+          "value": "expense-policies",
+          "cachedResultName": "expense-policies"
+        },
+        "topK": 2,
+        "options": {
+          "pineconeNamespace": "policies"
+        }
+      },
+      "id": "43c2745b-2e31-4410-94a7-af7e6addc047",
+      "name": "search_expense_policy",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.1,
+      "position": [
+        3264,
+        2144
+      ],
+      "credentials": {
+        "pineconeApi": {
+          "id": "qFORTiuyfEG38hbc",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 512
+        }
+      },
+      "id": "508682ff-96cf-4fbb-a4a3-325f539330e1",
+      "name": "Policy Embeddings (OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3264,
+        2272
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "FPWeiw3g01zK4icZ",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Submit an expense reimbursement claim for a user. Returns a status ('approved' or 'pending_review'), a claim_id and a human readable message.",
+        "jsCode": "// Port of submit_expense() from the LangGraph notebook.\nconst AUTO_APPROVE_LIMITS = { meals: 150, travel: 500, equipment: 200 };\n\nconst userId = String(query.user_id ?? '1');\nconst amount = Number(query.amount);\nconst category = String(query.category ?? '').toLowerCase().trim();\nconst description = String(query.description ?? '');\n\nif (!isFinite(amount) || amount <= 0) {\n  return JSON.stringify({ status: 'error', message: 'amount must be a positive number.' });\n}\n\nconst limit = AUTO_APPROVE_LIMITS[category] !== undefined ? AUTO_APPROVE_LIMITS[category] : 100;\n\n// Deterministic stand-in for Python's hash() so the same claim gets the same id.\nconst seed = userId + '|' + amount + '|' + description;\nlet h = 0;\nfor (let i = 0; i < seed.length; i++) {\n  h = (h * 31 + seed.charCodeAt(i)) % 1000000007;\n}\nconst claimId = 'EXP-' + String(h % 10000).padStart(4, '0');\n\nif (amount <= limit) {\n  return JSON.stringify({\n    status: 'approved',\n    claim_id: claimId,\n    message: 'Expense of $' + amount.toFixed(2) + ' (' + category +\n      ') auto-approved. Reimbursement will be included in the next payroll cycle.',\n  });\n}\n\nreturn JSON.stringify({\n  status: 'pending_review',\n  claim_id: claimId,\n  message: 'Expense of $' + amount.toFixed(2) + ' (' + category + ') exceeds the $' + limit +\n    ' auto-approval limit and has been routed to your manager for review.',\n});\n",
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"user_id\": {\n      \"type\": \"string\",\n      \"description\": \"A unique string representing the user id\"\n    },\n    \"amount\": {\n      \"type\": \"number\",\n      \"description\": \"The total expense amount in USD\"\n    },\n    \"category\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"meals\",\n        \"travel\",\n        \"equipment\"\n      ],\n      \"description\": \"The expense category\"\n    },\n    \"description\": {\n      \"type\": \"string\",\n      \"description\": \"A short description of the expense\"\n    }\n  },\n  \"required\": [\n    \"user_id\",\n    \"amount\",\n    \"category\",\n    \"description\"\n  ]\n}"
+      },
+      "id": "b2415491-271e-45d6-8b17-1981ab1cf4d6",
+      "name": "submit_expense",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.2,
+      "position": [
+        3680,
+        2016
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "45928787-7bed-4eb2-80b5-a6913fcaabe5",
+              "name": "output",
+              "value": "Sorry, I can only help with time-off requests and expense reimbursements. Try asking me something like 'I want to take Friday off' or 'Can I expense a new keyboard?'",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "12929dda-75b4-44d7-a888-bc3264571c0a",
+      "name": "Fallback Reply",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3152,
+        2400
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        3104,
+        2080
+      ],
+      "id": "36588ef5-3aa8-49c0-b28a-d303d39e732d",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "FPWeiw3g01zK4icZ",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('When chat message received').first().json.chatInput }}",
+        "options": {
+          "systemMessage": "=You are a helpful and accurate employee Expense Reimbursement Assistant.\nYou are given a user's request, and you need to reason about it and call the necessary tools to handle it.\n\nFollow these rules:\n1. ALWAYS call search_expense_policy first to check whether the expense is within policy.\n2. If information needed to submit a claim is missing (amount, category, or description), reply with a short question asking the user for it and stop. The user will answer in the next chat message and you will remember this conversation.\n3. Once you have the amount, category, and description, call submit_expense immediately - do NOT ask for confirmation.\n4. After submitting, clearly tell the user whether the expense was within policy and what the outcome was (including the claim id).\n5. Valid categories are: meals, travel, equipment.\n\ntoday's date    : {{ $now.format('cccc') }}, {{ $now.format('yyyy-MM-dd') }}\ntomorrow's date : {{ $now.plus(1, 'day').format('cccc') }}, {{ $now.plus(1, 'day').format('yyyy-MM-dd') }}\n\nuser_id : 1",
+          "maxIterations": 10
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3200,
+        1872
+      ],
+      "id": "d1c687fe-85b9-4bef-b25f-eb16b7db5e89",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "formTitle": "Upload Company Policy Document",
+        "formDescription": "Drop one or more policy documents in. The file name decides the category tag: name a file meals.md / travel.pdf / equipment.docx and the expense agent will retrieve it under that category.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Policy Document",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf,.docx,.txt,.md,.csv,.json",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Index into Pinecone",
+          "path": "46ec2f91-b6c8-4b92-b00e-5b0df1869ef1",
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Thanks - your policy document is being indexed into Pinecone."
+            }
+          }
+        }
+      },
+      "id": "bdda2302-4d35-4157-96c5-5d737f58f92e",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        3536,
+        1360
+      ],
+      "webhookId": "46ec2f91-b6c8-4b92-b00e-5b0df1869ef1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// One output item per uploaded file, tagged with a category derived from the\n// file name. Replaces the hard-coded POLICIES dict from the notebook.\n//\n//   meals.md              -> category \"meals\"\n//   Travel_Policy_v3.pdf  -> category \"travel\"\n//   parking.docx          -> category \"parking\"   (no keyword match -> slug of the name)\n\nconst KNOWN_CATEGORIES = ['meals', 'travel', 'equipment'];\n\n// Extensions the Default Data Loader reads as plain text. Browsers often send\n// .md as application/octet-stream, which the \"auto\" loader cannot dispatch, so\n// we normalise the mime type here.\nconst TEXT_EXTENSIONS = ['md', 'markdown', 'txt', 'text', 'rst'];\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const binary = item.binary ?? {};\n\n  for (const key of Object.keys(binary)) {\n    const bin = binary[key];\n    const fileName = bin.fileName ?? key;\n\n    const stem = fileName.replace(/\\.[^.]+$/, '');\n    const ext = (fileName.split('.').pop() ?? '').toLowerCase();\n    const slug = stem\n      .toLowerCase()\n      .replace(/[^a-z0-9]+/g, '_')\n      .replace(/^_+|_+$/g, '');\n\n    const matched = KNOWN_CATEGORIES.find((c) => slug.includes(c));\n\n    const normalised =\n      TEXT_EXTENSIONS.includes(ext) && !String(bin.mimeType ?? '').startsWith('text/')\n        ? { ...bin, mimeType: 'text/plain' }\n        : bin;\n\n    out.push({\n      json: {\n        file_name: fileName,\n        category: matched ?? (slug || 'other'),\n        matched_known_category: Boolean(matched),\n        form_field: key,\n        submitted_at: item.json.submittedAt ?? null,\n      },\n      binary: { data: normalised },\n    });\n  }\n}\n\nif (out.length === 0) {\n  throw new Error(\n    'No file found on the form submission. Attach at least one document and submit again.'\n  );\n}\n\nreturn out;\n"
+      },
+      "id": "9686a9fc-e8aa-4d89-84b4-7aa233279565",
+      "name": "Split Files & Tag Category",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3840,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "mode": "list",
+          "value": "expense-policies",
+          "cachedResultName": "expense-policies"
+        },
+        "options": {
+          "clearNamespace": false,
+          "pineconeNamespace": "policies"
+        }
+      },
+      "id": "57a25414-d408-4ef0-89ec-13418ddfad2e",
+      "name": "Pinecone Vector Store (insert)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.1,
+      "position": [
+        4080,
+        1312
+      ],
+      "credentials": {
+        "pineconeApi": {
+          "id": "qFORTiuyfEG38hbc",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "binaryMode": "specificField",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "category",
+                "value": "={{ $json.category }}"
+              },
+              {
+                "name": "source",
+                "value": "={{ $json.file_name }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "da27edda-a077-41c6-964f-c55320b5b869",
+      "name": "Policy Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        3776,
+        1712
+      ]
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "id": "195dd89d-c5f5-4cda-974c-954768bf0903",
+      "name": "Recursive Character Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        3776,
+        1872
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5e8c9d8d-083b-4707-9ecd-2cf945cc7ced",
+              "name": "indexed_chunks",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "8b045591-388a-4f2a-a08d-b2acaf001da5",
+              "name": "files",
+              "value": "={{ $('Split Files & Tag Category').all().map(i => i.json.file_name + ' -> ' + i.json.category).join(', ') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "693d98cd-37a8-496f-91a4-c2968e21bc73",
+      "name": "Ingest Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4000,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 512
+        }
+      },
+      "id": "982e80e5-1a39-4f8f-aef5-c0483ca2de46",
+      "name": "Policy Embeddings (OpenAI)1",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3536,
+        1712
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "FPWeiw3g01zK4icZ",
+          "name": "OpenAI account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Load Chat History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Chat History": {
+      "main": [
+        [
+          {
+            "node": "Classify Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Intent": {
+      "main": [
+        [
+          {
+            "node": "Time-Off Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classifier Model (gpt-4o)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify Intent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Model (gpt-4o)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Time-Off Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shared Memory (messages)": {
+      "ai_memory": [
+        [
+          {
+            "node": "Load Chat History",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Time-Off Agent",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_time_off_balance": {
+      "ai_tool": [
+        [
+          {
+            "node": "Time-Off Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process_time_off": {
+      "ai_tool": [
+        [
+          {
+            "node": "Time-Off Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_expense_policy": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "submit_expense": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Embeddings (OpenAI)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "search_expense_policy",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Split Files & Tag Category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Files & Tag Category": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store (insert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store (insert)": {
+      "main": [
+        [
+          {
+            "node": "Ingest Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store (insert)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Policy Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Embeddings (OpenAI)1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store (insert)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e8f6a89b-2dbb-4a5e-9391-923f208012ac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2f84799f377210bb373f61a59440873fec4ae3f3cea60e8a19fd0955faa44541"
+  },
+  "id": "SjV9ASDmzBCJmiiO",
+  "tags": []
+}

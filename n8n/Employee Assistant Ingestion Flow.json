@@ -1,0 +1,255 @@
+{
+  "name": "Employee Assistant Ingestion Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Upload Company Policy Document",
+        "formDescription": "Drop one or more policy documents in. The file name decides the category tag: name a file meals.md / travel.pdf / equipment.docx and the expense agent will retrieve it under that category.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Policy Document",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf,.docx,.txt,.md,.csv,.json",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Index into Pinecone",
+          "path": "60c6ea6b-b6d9-4e0e-b045-5cc7368d2a0a",
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Thanks - your policy document is being indexed into Pinecone."
+            }
+          }
+        }
+      },
+      "id": "83bf0803-6d4d-4d21-90ca-bce45e6cab30",
+      "name": "On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        2832,
+        2400
+      ],
+      "webhookId": "60c6ea6b-b6d9-4e0e-b045-5cc7368d2a0a"
+    },
+    {
+      "parameters": {
+        "jsCode": "// One output item per uploaded file, tagged with a category derived from the\n// file name. Replaces the hard-coded POLICIES dict from the notebook.\n//\n//   meals.md              -> category \"meals\"\n//   Travel_Policy_v3.pdf  -> category \"travel\"\n//   parking.docx          -> category \"parking\"   (no keyword match -> slug of the name)\n\nconst KNOWN_CATEGORIES = ['meals', 'travel', 'equipment'];\n\n// Extensions the Default Data Loader reads as plain text. Browsers often send\n// .md as application/octet-stream, which the \"auto\" loader cannot dispatch, so\n// we normalise the mime type here.\nconst TEXT_EXTENSIONS = ['md', 'markdown', 'txt', 'text', 'rst'];\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const binary = item.binary ?? {};\n\n  for (const key of Object.keys(binary)) {\n    const bin = binary[key];\n    const fileName = bin.fileName ?? key;\n\n    const stem = fileName.replace(/\\.[^.]+$/, '');\n    const ext = (fileName.split('.').pop() ?? '').toLowerCase();\n    const slug = stem\n      .toLowerCase()\n      .replace(/[^a-z0-9]+/g, '_')\n      .replace(/^_+|_+$/g, '');\n\n    const matched = KNOWN_CATEGORIES.find((c) => slug.includes(c));\n\n    const normalised =\n      TEXT_EXTENSIONS.includes(ext) && !String(bin.mimeType ?? '').startsWith('text/')\n        ? { ...bin, mimeType: 'text/plain' }\n        : bin;\n\n    out.push({\n      json: {\n        file_name: fileName,\n        category: matched ?? (slug || 'other'),\n        matched_known_category: Boolean(matched),\n        form_field: key,\n        submitted_at: item.json.submittedAt ?? null,\n      },\n      binary: { data: normalised },\n    });\n  }\n}\n\nif (out.length === 0) {\n  throw new Error(\n    'No file found on the form submission. Attach at least one document and submit again.'\n  );\n}\n\nreturn out;\n"
+      },
+      "id": "f8d00ae9-a06d-4828-9c86-6c73cc59cbad",
+      "name": "Split Files & Tag Category",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3072,
+        2400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "mode": "list",
+          "value": "expense-policies",
+          "cachedResultName": "expense-policies"
+        },
+        "options": {
+          "clearNamespace": false,
+          "pineconeNamespace": "policies"
+        }
+      },
+      "id": "54d873cc-d0f1-413c-80cc-194a06710e4a",
+      "name": "Pinecone Vector Store (insert)",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.1,
+      "position": [
+        3344,
+        2400
+      ],
+      "credentials": {
+        "pineconeApi": {
+          "id": "qFORTiuyfEG38hbc",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "dimensions": 512
+        }
+      },
+      "id": "4d7917d2-25f3-42a8-b5e4-6c3bb9a9783f",
+      "name": "Policy Embeddings (OpenAI)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3216,
+        2624
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "FPWeiw3g01zK4icZ",
+          "name": "OpenAI account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "binaryMode": "specificField",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "category",
+                "value": "={{ $json.category }}"
+              },
+              {
+                "name": "source",
+                "value": "={{ $json.file_name }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "1ef6d868-8ce9-438c-98d4-c14600ab0ca3",
+      "name": "Policy Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        3456,
+        2624
+      ]
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 100,
+        "options": {}
+      },
+      "id": "11dfbd7e-4256-4f2b-b01c-21d87f31f2fe",
+      "name": "Recursive Character Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        3456,
+        2784
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5e8c9d8d-083b-4707-9ecd-2cf945cc7ced",
+              "name": "indexed_chunks",
+              "value": "={{ $input.all().length }}",
+              "type": "number"
+            },
+            {
+              "id": "8b045591-388a-4f2a-a08d-b2acaf001da5",
+              "name": "files",
+              "value": "={{ $('Split Files & Tag Category').all().map(i => i.json.file_name + ' -> ' + i.json.category).join(', ') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7044a99d-169b-4c68-9168-e6881d340a1b",
+      "name": "Ingest Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3680,
+        2400
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Split Files & Tag Category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Files & Tag Category": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store (insert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store (insert)": {
+      "main": [
+        [
+          {
+            "node": "Ingest Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Embeddings (OpenAI)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store (insert)",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Policy Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store (insert)",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Policy Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3300ded4-b9aa-49f4-b4d8-29f47db711fa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2f84799f377210bb373f61a59440873fec4ae3f3cea60e8a19fd0955faa44541"
+  },
+  "id": "eGZLRb10xpq6hQOW",
+  "tags": []
+}
