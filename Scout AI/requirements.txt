@@ -1,0 +1,10 @@
+deepagents
+langchain
+langchain-openai
+langsmith
+tavily-python
+python-dotenv
+fastapi
+uvicorn
+python-docx
+truststore

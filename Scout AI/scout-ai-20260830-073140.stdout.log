@@ -1,0 +1,4 @@
+INFO:     127.0.0.1:55698 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55698 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55698 - "GET /api/research/history/7ba4ada8-3da HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65512 - "POST /api/export/docx HTTP/1.1" 200 OK

@@ -1,0 +1,18 @@
+INFO:     127.0.0.1:63790 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59615 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59615 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63955 - "GET /api/research/history/demo-enterprise-ai HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52679 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52679 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62418 - "POST /api/research/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62418 - "GET /api/research/stream/7ba4ada8-3da HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62418 - "GET /api/research/history/7ba4ada8-3da HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49387 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59323 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59323 - "GET /api/research/history/7ba4ada8-3da HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53363 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53363 - "GET /api/research/history/7ba4ada8-3da HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53366 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53366 - "GET /api/research/history/7ba4ada8-3da HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55852 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55852 - "GET /api/research/history/7ba4ada8-3da HTTP/1.1" 200 OK

@@ -1,0 +1,29 @@
+INFO:     127.0.0.1:62254 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61136 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61136 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59141 - "GET /api/research/history/demo-enterprise-ai HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55029 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55029 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55029 - "POST /api/research/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55029 - "GET /api/research/stream/f7ece4b6-335 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55029 - "GET /api/research/history/f7ece4b6-335 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58537 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53683 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53683 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52586 - "GET /api/research/history/demo-enterprise-ai HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54832 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62791 - "POST /api/research/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62791 - "GET /api/research/stream/9cd6a3a4-a60 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62791 - "GET /api/research/history/9cd6a3a4-a60 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64097 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54645 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54645 - "GET /api/research/history/9cd6a3a4-a60 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54648 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54648 - "GET /api/research/9cd6a3a4-a60 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54651 - "GET /api/research/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54654 - "GET /api/research/history/9cd6a3a4-a60 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62047 - "GET /api/research/history/9cd6a3a4-a60 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55293 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55293 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55305 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55305 - "GET /api/research/history HTTP/1.1" 200 OK

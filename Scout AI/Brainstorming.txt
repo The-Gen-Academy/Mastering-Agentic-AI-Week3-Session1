@@ -1,0 +1,6 @@
+pip install deepagents 
+pip install langchain 
+pip install langchain-openai 
+pip install tavily-python 
+pip install python-dotenv
+
